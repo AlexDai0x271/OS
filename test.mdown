@@ -1,0 +1,155 @@
+# 实验三：edu设备驱动编写
+
+## 1.edu设备发现函数"edu_driver_probe()"
+
+<font size="4">
+
+  - **关键技术1：设备使能函数**
+
+  ~~~C
+  int pci_enable_device(struct *device dev)
+  ~~~
+    利用返回值来判断设备是否挂载在pci总线上，0为使能不成功，1为使能成功  
+
+    > from:https://www.kernel.org/doc/Documentation/PCI/pci.txt
+
+
+
+  - **关键技术2：内存申请函数**
+  
+  ~~~C
+  int kzalloc(size_t size, gfp_t flags)
+  ~~~
+    利用返回值判断内存申请与清理是否完成  
+
+    > from:https://www.kernel.org/doc/html/latest/core-api/memory-allocation.html
+
+  - **关键技术3："pci_resource"函数组**
+  
+  ~~~C
+  unsigned long pci_resource_start(struct pci_dev *dev, int resno);
+  unsigned long pci_resource_len(struct pci_dev *dev, int resno);
+  unsigned long pci_resource_flags(struct pci_dev *dev, int resno);
+  ~~~
+  
+  <p style="line-height: 2;">
+    使用以上三个函数将pci资源分配给字符设备edu：  
+    start函数将PCI总线号赋给io成员变量  
+    len函数规定了寻址范围  
+    flags函数将首地址赋给成员变量flag  
+  </p>
+
+    > from:https://www.kernel.org/doc/html/v4.12/driver-api/pci.html
+  
+
+
+  - **关键技术4：I/O内存申请函数**
+
+  ~~~C
+  int pci_request_regions(struct pci_dev *pdev, const char *res_name);
+  ~~~
+
+  <p style="line-height: 2;">
+    申请PCI字符设备edu的I/O和内存资源，相当于在注册表内添加该设备  
+    <div style="border: 1px solid red; padding: 10px;">
+      <strong>注意:</strong> 不要在res_name字符串带有任何中文，在首次编写时因为乱码导致无法发现设备
+    </div>
+  </p>
+
+    > from:https://docs.kernel.org/5.10/driver-api/pci/pci.html
+  
+
+
+  - **关键技术5：BAR总线地址映射到系统内存的虚拟地址**
+  ~~~C
+  void __iomem *ioremap(unsigned long offset, unsigned long size)
+  ~~~
+
+  <p style="line-height: 2;">
+    将设备的物理地址映射到系统内存的虚拟地址，就是将设备虚拟化，保证设备与计算机本地系统的独立性
+    <div style="border: 1px solid red; padding: 10px;">
+      <strong>注意:</strong> 小心越界问题，由于本虚拟机有8GB的内存所以不用担心该问题，但是在开发嵌入式设备上的驱动中要格外注意需要调用iounmap来释放内存，避免内存泄漏
+    </div>
+  </p>  
+
+    > from:https://www.kernel.org/doc/html/latest/driver-api/device-io.html
+
+  - **关键技术6：设置驱动私有数据**
+  ~~~C
+  void *pci_set_drvdata(struct pci_dev *pdev, void *data)
+  ~~~
+  在驱动程序的生命周期内存储和访问特定的数据  
+  
+  > from:https://docs.kernel.org/5.10/driver-api/pci/pci.html  
+</font>
+
+## 2.edu设备移除函数"edu_driver_remove()"
+<font size='4'>
+
+  - **关键技术1：I/O内存释放函数**
+  ~~~C
+  void *pci_release_regions(struct pci_dev *pdev)
+  ~~~
+  将I/O设备所申请的I/O内存释放，将设备清除出/etc/proc和/etc/devices
+
+  >from:https://docs.kernel.org/5.10/driver-api/pci/pci.html
+
+  - **关键技术2：设备数据读取**
+  ~~~C
+  void *pci_get_drvdata(struct pci_dev *pdev)
+  ~~~
+  获取到设备已经读取到的数据，将数据地址返回
+
+  >from:https://docs.kernel.org/5.10/driver-api/pci/pci.html
+</font>
+
+## 3.kthread句柄函数"kthread_handler()"
+<font size='4'>
+
+  - **关键技术：原子化存储**
+  ~~~C
+  void atomic64_set(atomic64_t *v, long long i)
+  ~~~
+  将i原子化存储到内存中
+  
+  <div style="border: 1px solid red; padding: 10px;">
+      <strong>注意:</strong> 赋值时一定要上锁和关锁，不然会显示内存错误！
+  </div>
+
+  >from:https://www.kernel.org/doc/html/latest/core-api/wrappers/atomic_t.html
+</font>
+
+## 4.io控制函数"edu_dev_unlocked_ioctl()"
+<font size='4'>
+
+  - **关键技术：启动线程**
+  ~~~C
+  void kthread_run(int *function,void *data,char *name)
+  ~~~
+  启动线程
+
+  >from:https://www.kernel.org/doc/html/v5.15/driver-api/basics.html?highlight=wake_up_process
+
+  - **设计思路**
+  使用结构体user_data与thread_data中的数据指向task_struct内，再给task分配内存，task生成线程然后调用"kthread_handler"完成阶乘
+</font>
+
+## 5.驱动程序初始化
+<font size='4'>
+
+  - **关键技术：注册设备**
+  ~~~C
+  int register_chrdev(char* major, char* name, static struct file_operations *fops)
+  int pci_register_drive(struct pci_drive *pcid)
+  ~~~
+  在注册表上注册字符设备并且在pci表上注册设备，在/etc/proc中可以看到有major号和name名字的字符型设备会被添加，
+  在/etc/drives里会看到edu设备的名字
+
+  >from:https://www.kernel.org/doc/html/v5.15/driver-api/pci_drive
+
+</font>
+
+## 6.实践设计思路
+<font size='4'>
+  本次设计主要针对的是字符设备的驱动，驱动设备需要做的是暴露设备号->注册设备->实现目标功能，本次的字符设备相当简单，功能单一所以使用句柄去实现功能。在设计的过程中就遵循的就是以上原则完成的。
+</font>
