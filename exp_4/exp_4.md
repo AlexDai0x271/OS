@@ -75,6 +75,37 @@ vim在如下路径：
   make -j $(nproc)
 ~~~
 
+## 1.0 启动虚拟机
+完成编译之后我们运行start.sh文件  
+~~~shell
+  chmod +x start.sh
+  ./start.sh
+~~~
+## 2.0 启动edu设备并测试
+qemu启动之后我们需要测试edu设备的运行因此需要完成share文件夹的配置  
+首先，在 Qemu 虚拟机内部创建一个空文件夹，比如/root/qemu-share。  
+然后，在 Qemu 虚拟机内部执行命令挂载 Host 侧的/root/share 文件夹到 Qemu 侧的/root/qemu-share。  
+~~~shell
+  mount -t 9p -o trans=virtio [mount tag] [mount point]
+~~~
+下一步，将前一个实验中编译的 edu 设备驱动及测试程序的二进制文件复制到 Host 侧的/root/share 文件夹下。  
+最后，进入 Qemu 虚拟机内部，以相同的方法加载设备驱动，并运行测试程序以验证 edu 设备的阶乘功能。  
+然后按照实验三的步骤插入模块就能看到如下图：  
+
+![图片](https://github.com/user-attachments/assets/a62cf44b-62ee-4a36-ab20-d91c848676ba)
+
+可以看到edu设备能够正确输出  
+
+## 2.1 检查vim和bash的配置
+使用以下代码可以检查是否安装vim和bash  
+~~~shell
+  which bash
+  echo $SHELL
+~~~
+得到如下结果：  
+
+![图片](https://github.com/user-attachments/assets/028c96f8-2147-47b3-8d92-e91ca138a45f)
+
 
 
 
