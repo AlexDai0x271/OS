@@ -185,3 +185,6 @@ ioctl 接口，以获取设备计算完成的结果。
 完成.c文件之后执行make install将内核模块注册到/dev和/proc文件夹内，注册为字符设备  
 然后调用gcc编译器编译user_space.c文件实例化之后加载内核模块，然后执行exe文件，得到结果  
 ## 5.实验结果
+![image](https://github.com/user-attachments/assets/103a5896-5aea-4ab5-a6a8-70a06ceb4016)
+## 6.实验心得
+通过本次实验，学习了pic总线接口的知识以及编写pci接口的驱动程序，在调试过程中因为没有使用make install命令导致edu设备一直无法注册到/dev表格中，但是通过查阅资料学习了make命令的一些扩展并且完成了最后的驱动测试，并且测试成功
